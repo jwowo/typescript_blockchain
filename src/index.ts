@@ -1,23 +1,80 @@
-class Human {
-  public name: string;
-  public age: number;
-  public gender: string;
-  constructor(name: string, age: number, gender: string) {
-    // constructor는 class로 object를 생성할때 자동적으로 생성됨
-    this.name = name;
-    this.age = age;
-    this.gender = gender;
+import * as CryptoJS from 'crypto-js';
+
+class Block {
+  static calculateBlockHash = (index: number, previousHash: string, timestamp: number, data: string): string =>
+    CryptoJS.SHA256(index + previousHash + timestamp + data).toString();
+
+  static validateStructure = (aBlock: Block): boolean =>
+    typeof aBlock.index === 'number' &&
+    typeof aBlock.hash === 'string' &&
+    typeof aBlock.previousHash === 'string' &&
+    typeof aBlock.timestamp === 'number' &&
+    typeof aBlock.data === 'string';
+
+  public index: number;
+  public hash: string;
+  public previousHash: string;
+  public data: string;
+  public timestamp: number;
+
+  constructor(index: number, hash: string, previousHash: string, data: string, timestamp: number) {
+    this.index = index;
+    this.hash = hash;
+    this.previousHash = previousHash;
+    this.data = data;
+    this.timestamp = timestamp;
   }
 }
 
-const jw = new Human('JW', 20, 'male');
+const genesisBlock: Block = new Block(0, '212121212', '', 'Hello', 123456);
 
-// ?는 옵션이라는 의미 (항상 name, age가 필요하지만 gender는 필요하지 않구나하고 알 수 있다(강력한 기능))
-const sayHi = (person: Human): string => {
-  return `Hello ${person.name}, you are ${person.age}, you are ${person.gender}!!!`;
+let blockchain: Block[] = [genesisBlock];
+
+const getBlockchain = (): Block[] => blockchain;
+
+const getLatestBlock = (): Block => blockchain[blockchain.length - 1];
+
+const getNewTimeStamp = (): number => Math.round(new Date().getTime() / 1000);
+
+const createNewBlock = (data: string): Block => {
+  const previousBlock: Block = getLatestBlock();
+  const newIndex: number = previousBlock.index + 1;
+  const newTimestamp: number = getNewTimeStamp();
+  const newHash: string = Block.calculateBlockHash(newIndex, previousBlock.hash, newTimestamp, data);
+  const newBlock: Block = new Block(newIndex, newHash, previousBlock.hash, data, newTimestamp);
+
+  addBlock(newBlock);
+
+  return newBlock;
 };
 
-// sayHi에 마우스를 올리면 name: any, age: any, gender: any라는 것을 볼 수 있다.
-console.log(sayHi(jw));
+// console.log(createNewBlock('hello'), createNewBlock('bye bye'));
+const getHashforBlock = (aBlock: Block): string => Block.calculateBlockHash(aBlock.index, aBlock.previousHash, aBlock.timestamp, aBlock.data);
+
+const isBlockValid = (candidateBlock: Block, previousBlock: Block): boolean => {
+  if (Block.validateStructure(candidateBlock)) {
+    return false;
+  } else if (previousBlock.index + 1 !== candidateBlock.index) {
+    return false;
+  } else if (previousBlock.hash !== candidateBlock.previousHash) {
+    return false;
+  } else if (getHashforBlock(candidateBlock) !== candidateBlock.hash) {
+    return false;
+  } else {
+    return true;
+  }
+};
+
+const addBlock = (candidateBlock: Block): void => {
+  if (isBlockValid(candidateBlock, getLatestBlock())) {
+    blockchain.push(candidateBlock);
+  }
+};
+
+createNewBlock('second block');
+createNewBlock('third block');
+createNewBlock('fourth block');
+
+console.log(blockchain);
 
 export {};
